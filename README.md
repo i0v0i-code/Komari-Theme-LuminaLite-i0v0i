@@ -1,8 +1,28 @@
-# Komari-Theme-LuminaLite
+# Komari-Theme-LuminaLite-i0v0i
+
+[JohnsonRan/Komari-Theme-LuminaLite](https://github.com/JohnsonRan/Komari-Theme-LuminaLite) 的定制 fork，保留上游历史与作者署名，不另行声明上游代码许可。此版本将首页延迟监测改为 **一个监测任务一行**，名称与自己的指标直接对应，无需切换标签。
+
+- 名称固定在左侧；建议使用「地区 + 运营商」，例如 `福建联通`、`福建移动`、`福建电信`。
+- 右侧延迟与丢包数字对齐，保留各自的历史趋势；窄卡片优先保留名称和数字。
+- 长名称截断并保留完整名称提示，不更改后端任务名称。
+- 未知数据不伪装成正常值；沿用上游任务选择、颜色与数据接口。
+
+## 构建与安装
+
+```bash
+npm ci
+npm run lint
+npm test
+npm run package
+```
+
+将生成的 `Komari-Theme-LuminaLite-i0v0i-v*.zip` 上传到 Komari 后台的主题管理，再选择本主题。不要上传 GitHub 的源码 ZIP。新主题沿用上游设置键，但名称不同，切换时请核对原主题设置是否需要重新填写。
+
+重新生成预览：先运行 `npm run dev -- --host 127.0.0.1 --port 5199`，再运行 `CHROMIUM_PATH=/path/to/chrome npm run package`。仓库预览使用上游开发模式演示数据，不代表真实服务器。
 
 [Komari](https://github.com/komari-monitor/komari) 监控面板的增强主题，在 [Komari-Theme-LuminaPlus](https://github.com/shanyang242/Komari-Theme-LuminaPlus) 的基础上进一步深度定制。
 
-> 本仓库由 Komari-Theme-LuminaPlus 分支独立演化而来，已与上游脱离。感谢原作者 [shanyang242](https://github.com/shanyang242) 的 LuminaPlus，以及更上游 [stqfdyr](https://github.com/stqfdyr) 的 [komari-theme-Lumina](https://github.com/stqfdyr/komari-theme-Lumina) 打下的基础。
+> 原版 LuminaLite 由 Komari-Theme-LuminaPlus 分支独立演化而来；本仓库保留对 JohnsonRan/LuminaLite 的 fork 关系。感谢原作者 [shanyang242](https://github.com/shanyang242) 的 LuminaPlus，以及更上游 [stqfdyr](https://github.com/stqfdyr) 的 [komari-theme-Lumina](https://github.com/stqfdyr/komari-theme-Lumina) 打下的基础。
 
 ## 主要特性
 
@@ -14,7 +34,7 @@
 ### 主题设置
 - 通过 Komari 官方后台 **主题设置**（`/admin/theme_managed`）配置，由 `komari-theme.json` 的 managed configuration 生成表单（外观 / 视图 / 背景 / 配色 / 首页 / 节点 / 卡片 / Ping / 详情 等分类 TAB）。
 - 外观（亮 / 暗 / 跟随系统）、默认视图、背景、首页巡检、隐藏节点、小卡片显示项、延迟检测、指标配色等均可配置。
-- **主页延迟检测**：在设置里用 JSON 绑定 Ping 任务与节点 UUID；每个节点最多可绑定 3 个任务（如电信 / 联通 / 移动），首页卡片同时显示这些延迟，点击任务标签即可切换下方的延迟 / 丢包图表；每个标签底部常驻一条丢包热力色条（绿 = 无丢包、黄 / 红 = 有丢包），真的在丢包时才追加具体百分比。
+- **主页延迟检测**：在 Komari 的 Ping 任务中绑定服务器，主题设置可限制展示任务；留空时按权重选择每个服务器的前三项。各监测任务独占一行，名称、延迟、丢包和历史状态一一对应，不再使用共享图表的切换标签。
 - 卡片配色（各项指标颜色与暗色背景深度）在官方表单中以扁平字段编辑，保存后对所有访客生效。
 
 ### 节点详情页
@@ -29,7 +49,8 @@
 
 ## 致谢
 
-- [shanyang242/Komari-Theme-LuminaPlus](https://github.com/shanyang242/Komari-Theme-LuminaPlus) — 本项目的直接来源。
+- [JohnsonRan/Komari-Theme-LuminaLite](https://github.com/JohnsonRan/Komari-Theme-LuminaLite) — 本 fork 的直接上游。
+- [shanyang242/Komari-Theme-LuminaPlus](https://github.com/shanyang242/Komari-Theme-LuminaPlus) — LuminaLite 的来源。
 - [stqfdyr/komari-theme-Lumina](https://github.com/stqfdyr/komari-theme-Lumina) — LuminaPlus 的上游。
 - 也感谢 Komari 官方主题、Mochi、PurCarte 等主题项目为 Komari 生态提供的设计和实现思路。
 

@@ -1,9 +1,9 @@
 {
-  "name": "komari-theme-luminalite",
+  "name": "komari-theme-luminalite-i0v0i",
   "private": true,
-  "version": "2.7.4",
+  "version": "2.7.4-i0v0i.1",
   "type": "module",
-  "description": "Komari-Theme-LuminaLite",
+  "description": "Komari-Theme-LuminaLite-i0v0i — per-target ping rows",
   "author": "codex&shark&shanyang",
   "scripts": {
     "dev": "vite",

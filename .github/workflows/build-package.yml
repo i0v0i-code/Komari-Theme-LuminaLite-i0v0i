@@ -40,9 +40,9 @@ jobs:
       - name: Upload package artifact
         uses: actions/upload-artifact@v7
         with:
-          name: Komari-Theme-LuminaLite-package
+          name: Komari-Theme-LuminaLite-i0v0i-package
           path: |
-            Komari-Theme-LuminaLite-v*.zip
+            Komari-Theme-LuminaLite-i0v0i-v*.zip
             preview.png
 
       - name: Resolve release notes
@@ -62,6 +62,6 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           files: |
-            Komari-Theme-LuminaLite-v*.zip
+            Komari-Theme-LuminaLite-i0v0i-v*.zip
             preview.png
           body_path: ${{ steps.release-notes.outputs.path }}

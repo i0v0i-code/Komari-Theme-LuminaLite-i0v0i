@@ -20,11 +20,15 @@ mkdirSync(shotsDir, { recursive: true });
 
 // 优先用系统 Playwright 缓存里的 Chromium；找不到再尝试可执行文件。
 const CANDIDATES = [
+  process.env.CHROMIUM_PATH,
+  chromium.executablePath(),
+  "/usr/bin/chromium",
+  "/usr/bin/chromium-browser",
   "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe",
   "C:/Users/JohnsonRan/AppData/Local/ms-playwright/chromium-1228/chrome-win64/chrome.exe",
   "C:/Users/JohnsonRan/AppData/Local/ms-playwright/chromium-1223/chrome-win64/chrome.exe",
 ];
-const executablePath = CANDIDATES.find((p) => existsSync(p));
+const executablePath = CANDIDATES.find((p) => p && existsSync(p));
 
 const DEV = process.env.PREVIEW_URL ?? "http://localhost:5199";
 
@@ -113,7 +117,7 @@ function buildGridHtml(frames) {
     figcaption { font-size: 14px; font-weight: 600; color: #aab4c0; padding-left: 2px; }
   </style></head><body>
     <header>
-      <h1>Komari-Theme-LuminaLite</h1>
+      <h1>Komari-Theme-LuminaLite-i0v0i</h1>
       <p>亮 / 暗双主题 · 四种节点视图 · 详情分栏图表 · 流量 / 连接统计 · 移动端适配</p>
     </header>
     <div class="grid">${cells}</div>

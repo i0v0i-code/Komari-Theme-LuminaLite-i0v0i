@@ -13,7 +13,7 @@ const motionCss = readSource("../../styles/motion.css");
 const surfaceCss = readSource("../../styles/surface.css");
 const homeCss = readSource("../../styles/home.css");
 const compactCardCss = readSource("../../styles/compact-node-card.css");
-const nodeCardSource = readSource("../../components/node/NodeCard.tsx");
+const nodeCardSource = readSource("../../components/node/PingHistoryBars.tsx");
 const appShellSource = readSource("../../components/shell/AppShell.tsx");
 const instanceSource = readSource("../../pages/Instance.tsx");
 const animatedValueSource = readSource("../../components/ui/AnimatedValue.tsx");
@@ -124,7 +124,7 @@ describe("motion tokens stay aligned with the JS constants", () => {
       "compact-health-tooltip-in var(--motion-duration-fast) var(--motion-ease-enter)",
     );
     expect(nodeCardSource).toContain(
-      'className="server-health-tooltip motion-overlay-enter"',
+      'className="compact-node-health-tooltip"',
     );
     expect(motionCss).toContain(
       "motion-overlay-in var(--motion-duration-fast) var(--motion-ease-enter)",

@@ -1,22 +1,20 @@
-import { memo, useState, type CSSProperties, type ReactNode } from "react";
+import { memo, type CSSProperties, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowDown,
   ArrowUp,
   CircleDollarSign,
-  Clock3,
   Cpu,
   Gauge,
   HardDrive,
   MemoryStick,
-  Unplug,
 } from "@/components/ui/icons";
 import { clsx } from "clsx";
 import { Flag } from "@/components/ui/Flag";
 import { OsLogo } from "@/components/ui/OsLogo";
 import { AnimatedValue } from "@/components/ui/AnimatedValue";
 import { IpStackBadges } from "./IpStackBadges";
-import { PingTaskTabs } from "./PingTaskTabs";
+import { PingTaskRows } from "./PingTaskRows";
 import { NodeHistoryStrip } from "./NodeHistoryStrip";
 import { attentionAttrs } from "@/utils/nodeAttention";
 import { AttentionReasons } from "./AttentionReasons";
@@ -24,17 +22,15 @@ import { useNodeCardModel, type NodePingSeries } from "@/hooks/useNodeCardModel"
 import { useNodeStatusFlash } from "@/hooks/useNodeStatusFlash";
 import { usePreferences } from "@/hooks/usePreferences";
 import { useCanvasRedrawKey } from "@/hooks/useMetricColors";
-import { latencyHeatColor, lossHeatColor, speedRateColor } from "@/utils/metricTone";
+import { speedRateColor } from "@/utils/metricTone";
 import {
   clamp01,
   compactPercentText,
   joinTagTitle,
   nodeDetailLinkLabels,
-  pingEmptyLabels,
 } from "./nodeCardShared";
-import { formatPingHourStatsTitle } from "./pingBucketText";
 import { formatBytes, type ByteRateDisplay } from "@/utils/format";
-import type { NodeInfo, NodeMetrics, PingOverviewItem, PingOverviewBucket } from "@/types/komari";
+import type { NodeInfo, NodeMetrics } from "@/types/komari";
 import type { NodeHistory } from "@/utils/nodeHistory";
 
 // 迷你卡固定为巡检布局，不跟随紧凑卡的可选指标开关；数据仍走共享模型。
@@ -279,146 +275,18 @@ function MiniFlow({
   );
 }
 
-function MiniHealthBars({
-  buckets,
-  kind,
-  max,
-}: {
-  buckets: PingOverviewBucket[];
-  kind: "latency" | "loss";
-  max?: number;
-}) {
-  const width = Math.max(1, buckets.length * 4 - 1);
-  const safeMax = max && max > 0 ? max : 1;
-
-  return (
-    <svg
-      className="mini-health-bars"
-      viewBox={`0 0 ${width} 16`}
-      preserveAspectRatio="none"
-      aria-hidden
-    >
-      {buckets.map((bucket, index) => {
-        const latency = bucket.value;
-        const hasLatency = latency != null && Number.isFinite(latency) && latency >= 0;
-        const loss = bucket.loss;
-        const hasLoss = loss != null && Number.isFinite(loss) && bucket.total > 0;
-        const active = kind === "latency" ? hasLatency : hasLoss;
-        const barHeight =
-          kind === "latency"
-            ? 16 * (hasLatency ? Math.max(0.2, Math.min(1, latency / safeMax)) : 0.25)
-            : 16 * 0.84;
-        const tone =
-          kind === "latency"
-            ? hasLatency
-              ? latencyHeatColor(latency)
-              : "var(--progress-bg)"
-            : hasLoss
-              ? lossHeatColor(loss)
-              : "var(--progress-bg)";
-
-        return (
-          <rect
-            key={bucket.index}
-            x={index * 4}
-            y={16 - barHeight}
-            width="3"
-            height={barHeight}
-            rx="1.25"
-            fill={tone}
-            opacity={active ? 0.94 : 0.48}
-          />
-        );
-      })}
-    </svg>
-  );
-}
-
-// 延迟/丢包必显；mini 使用无监听的内联 SVG，避免每张卡创建 Canvas 与观察器。
 const MiniHealth = memo(function MiniHealth({
-  ping,
-  pingBuckets,
-  pingSeries,
-  activePingIndex,
-  onSelectPing,
-  latencyColor,
-  lossColor,
-  hasHomepagePingBinding,
-  history,
-  redrawKey,
+  pingSeries, hasHomepagePingBinding, history, redrawKey,
 }: {
-  ping: PingOverviewItem;
-  pingBuckets: PingOverviewBucket[];
   pingSeries: NodePingSeries[];
-  activePingIndex: number;
-  onSelectPing: (index: number) => void;
-  latencyColor: string;
-  lossColor: string;
   hasHomepagePingBinding: boolean;
   history: NodeHistory;
   redrawKey: string;
 }) {
-  const { text: emptyText } = pingEmptyLabels(hasHomepagePingBinding);
-  const hourStatsTitle = formatPingHourStatsTitle(ping);
   return (
-    // 整组吸底，见 CompactNodeCard 里同名 tail 容器的说明。
     <div className="mini-node-tail">
-      {hasHomepagePingBinding && pingSeries.length > 1 && (
-        <div className="mini-node-ping-tabs">
-          <PingTaskTabs
-            series={pingSeries}
-            activeIndex={activePingIndex}
-            onSelect={onSelectPing}
-            size="small"
-          />
-        </div>
-      )}
-      {hasHomepagePingBinding && <div className="mini-node-health">
-        <div className="mini-node-health-item">
-          <div className="mini-node-health-head">
-            <span className="mini-node-health-label">
-              <Clock3 size={12} strokeWidth={2} />
-              延迟
-            </span>
-            <strong
-              className="mini-node-health-value tabular"
-              style={{ color: latencyColor }}
-              title={hourStatsTitle ?? undefined}
-            >
-              {ping.lastValue != null ? (
-                <>
-                  <AnimatedValue text={String(Math.round(ping.lastValue))} />
-                  <small>ms</small>
-                </>
-              ) : (
-                <span className="mini-node-health-empty">{emptyText}</span>
-              )}
-            </strong>
-          </div>
-          <MiniHealthBars kind="latency" max={ping.max} buckets={pingBuckets} />
-        </div>
-        <div className="mini-node-health-item">
-          <div className="mini-node-health-head">
-            <span className="mini-node-health-label">
-              <Unplug size={12} strokeWidth={2} />
-              丢包
-            </span>
-            <strong className="mini-node-health-value tabular" style={{ color: lossColor }}>
-              {ping.loss != null ? (
-                <>
-                  <AnimatedValue text={ping.loss.toFixed(1)} />
-                  <small>%</small>
-                </>
-              ) : (
-                <span className="mini-node-health-empty">{emptyText}</span>
-              )}
-            </strong>
-          </div>
-          <MiniHealthBars kind="loss" buckets={pingBuckets} />
-        </div>
-      </div>}
-      {/* 迷你卡同样只画条，上报率在 tooltip 里。 */}
-      <NodeHistoryStrip history={history} redrawKey={redrawKey} height={12} />
+      {hasHomepagePingBinding && <PingTaskRows series={pingSeries} size="small" redrawKey={redrawKey} />}
+      <NodeHistoryStrip history={history} redrawKey={redrawKey} height={14} />
     </div>
   );
 });
@@ -427,9 +295,6 @@ export const MiniNodeCard = memo(function MiniNodeCard({ uuid }: { uuid: string 
   const { resolvedAppearance } = usePreferences();
   const redrawKey = useCanvasRedrawKey();
   const model = useNodeCardModel(uuid, HEALTH_BAR_COUNT);
-  // 多任务时选中的任务序号。任务数变化(改绑定)后可能越界,取用处再夹一次。
-  const [activePingIndex, setActivePingIndex] = useState(0);
-  // 骨架分支之前调用(hook 数量恒定):数据未就位时传 null,不会播闪烁。
   const statusFlash = useNodeStatusFlash(
     model.node ? model.node.online : null,
     model.attention,
@@ -485,8 +350,6 @@ export const MiniNodeCard = memo(function MiniNodeCard({ uuid }: { uuid: string 
     attention,
     history,
   } = model;
-  const pingIndex = Math.min(activePingIndex, pingSeries.length - 1);
-  const { ping, buckets: pingBuckets, latencyColor, lossColor } = pingSeries[pingIndex];
 
   return (
     // content-enter 只挂 article:骨架换成真实内容时 article 首次挂载,淡入一次;
@@ -509,13 +372,7 @@ export const MiniNodeCard = memo(function MiniNodeCard({ uuid }: { uuid: string 
       <MiniFlow node={node} upRate={upRate} downRate={downRate} />
       {(hasHomepagePingBinding || history.slots.length > 0) && (
         <MiniHealth
-          ping={ping}
-          pingBuckets={pingBuckets}
           pingSeries={pingSeries}
-          activePingIndex={pingIndex}
-          onSelectPing={setActivePingIndex}
-          latencyColor={latencyColor}
-          lossColor={lossColor}
           hasHomepagePingBinding={hasHomepagePingBinding}
           history={history}
           redrawKey={redrawKey}

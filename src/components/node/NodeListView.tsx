@@ -1,4 +1,4 @@
-import { memo, useRef, useState, type CSSProperties } from "react";
+import { memo, useRef, type CSSProperties } from "react";
 import { Link } from "react-router-dom";
 import { ArrowDown, ArrowUp, CircleDollarSign } from "@/components/ui/icons";
 import { clsx } from "clsx";
@@ -11,8 +11,7 @@ import { useNodeStatusFlash } from "@/hooks/useNodeStatusFlash";
 import { useCanvasRedrawKey } from "@/hooks/useMetricColors";
 import { formatBytes } from "@/utils/format";
 import { speedRateColor } from "@/utils/metricTone";
-import { LatencyBars } from "./LatencyBars";
-import { PingTaskTabs } from "./PingTaskTabs";
+import { PingTaskRows } from "./PingTaskRows";
 import { attentionAttrs } from "@/utils/nodeAttention";
 import { AttentionReasons } from "./AttentionReasons";
 import {
@@ -86,46 +85,17 @@ function StackLine({
   );
 }
 
-// 网络列:当前延迟在上,聚合延迟柱状图在下(热力着色,与大卡同一视觉语言)。
-// 绑定了多个 Ping 任务时,标签行让延迟柱切换到对应任务。
-function ListLatency({
-  pingSeries,
-  activeIndex,
-  onSelect,
-  redrawKey,
-}: {
+// Each monitor owns one row in the network column.
+function ListLatency({ pingSeries, redrawKey }: {
   pingSeries: NodePingSeries[];
-  activeIndex: number;
-  onSelect: (index: number) => void;
   redrawKey: string;
 }) {
-  const { ping, buckets, latencyColor } = pingSeries[activeIndex];
-  const latency = ping.lastValue;
-  return (
-    <div className="node-list-latency">
-      <PingTaskTabs
-        series={pingSeries}
-        activeIndex={activeIndex}
-        onSelect={onSelect}
-        size="small"
-      />
-      {/* 多任务时标签行已经把三个延迟都读出来了,再重复一遍当前值只会撑高行高。 */}
-      {pingSeries.length === 1 && (
-        <span className="node-list-latency-value tabular" style={{ color: latencyColor }}>
-          <AnimatedValue text={latency != null ? String(Math.round(latency)) : "—"} />
-          {latency != null && <small>ms</small>}
-        </span>
-      )}
-      <LatencyBars buckets={buckets} max={ping.max} redrawKey={redrawKey} height={14} />
-    </div>
-  );
+  return <div className="node-list-latency"><PingTaskRows series={pingSeries} size="small" redrawKey={redrawKey} /></div>;
 }
 
 const NodeRow = memo(function NodeRow({ uuid }: { uuid: string }) {
   const redrawKey = useCanvasRedrawKey();
   const model = useNodeCardModel(uuid, LIST_PING_BUCKETS);
-  // 多任务时选中的任务序号。任务数变化(改绑定)后可能越界,取用处再夹一次。
-  const [activePingIndex, setActivePingIndex] = useState(0);
   // 必须在骨架分支之前调用(hook 数量恒定):骨架期传 null 状态,不产生闪烁。
   const statusFlash = useNodeStatusFlash(
     model.node ? model.node.online : null,
@@ -165,8 +135,7 @@ const NodeRow = memo(function NodeRow({ uuid }: { uuid: string }) {
     osName,
     attention,
   } = model;
-  const pingIndex = Math.min(activePingIndex, pingSeries.length - 1);
-  const ping = pingSeries[pingIndex].ping;
+  const ping = pingSeries[0].ping;
   const detailLabels = nodeDetailLinkLabels(node.name, osName, {
     offline: isOffline,
     lastSeen: model.lastSeen,
@@ -302,8 +271,6 @@ const NodeRow = memo(function NodeRow({ uuid }: { uuid: string }) {
         {hasHomepagePingBinding && (
           <ListLatency
             pingSeries={pingSeries}
-            activeIndex={pingIndex}
-            onSelect={setActivePingIndex}
             redrawKey={redrawKey}
           />
         )}

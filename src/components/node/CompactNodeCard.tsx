@@ -1,4 +1,4 @@
-import { memo, useCallback, useRef, useState } from "react";
+import { memo, useCallback } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -6,14 +6,12 @@ import {
   ArrowUp,
   Calendar,
   CircleDollarSign,
-  Clock3,
   Cpu,
   Database,
   Gauge,
   HardDrive,
   MemoryStick,
   Network,
-  Unplug,
 } from "@/components/ui/icons";
 import { clsx } from "clsx";
 import { Flag } from "@/components/ui/Flag";
@@ -24,12 +22,9 @@ import { useCanvasRedrawKey } from "@/hooks/useMetricColors";
 import { useThemeSettings } from "@/hooks/useThemeSettings";
 import { formatBytes } from "@/utils/format";
 import {
-  latencyHeatColor,
-  lossHeatColor,
   speedRateColor,
   speedRateColorFromBytes,
 } from "@/utils/metricTone";
-import { formatHealthBucketTooltip, formatPingHourStatsTitle } from "./pingBucketText";
 import {
   clamp01,
   formatCompactExpire,
@@ -37,11 +32,10 @@ import {
   formatCompactUptime,
   joinTagTitle,
   nodeDetailLinkLabels,
-  pingEmptyLabels,
   TRAFFIC_SLIVER_RATIO,
 } from "./nodeCardShared";
 import { IpStackBadges } from "./IpStackBadges";
-import { PingTaskTabs } from "./PingTaskTabs";
+import { PingTaskRows } from "./PingTaskRows";
 import { NodeHistoryStrip } from "./NodeHistoryStrip";
 import { attentionAttrs } from "@/utils/nodeAttention";
 import { AttentionReasons } from "./AttentionReasons";
@@ -50,8 +44,6 @@ import { CanvasStrip, safeCanvasColor } from "./CanvasStrip";
 import type {
   NodeInfo,
   NodeMetrics,
-  PingOverviewBucket,
-  PingOverviewItem,
   TrafficTrendSample,
 } from "@/types/komari";
 import type { ByteRateDisplay } from "@/utils/format";
@@ -206,153 +198,6 @@ function CompactInfoRow({
         {unit && <small>{unit}</small>}
       </strong>
     </span>
-  );
-}
-
-function HealthBars({
-  buckets,
-  max,
-  kind,
-}: {
-  buckets: PingOverviewBucket[];
-  max: number;
-  kind: "latency" | "loss";
-}) {
-  const safeMax = Math.max(1, max);
-  const bars = buckets.slice(-HEALTH_BAR_COUNT);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const barRefs = useRef<(HTMLButtonElement | null)[]>([]);
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-  const activeIndex = hoveredIndex ?? selectedIndex;
-  const activeBucket = activeIndex == null ? null : bars[activeIndex] ?? null;
-  const activeTooltip = activeBucket ? formatHealthBucketTooltip(activeBucket, kind) : null;
-  const activeLeft =
-    activeIndex == null || bars.length === 0
-      ? "50%"
-      : `clamp(42px, ${((activeIndex + 0.5) / bars.length) * 100}%, calc(100% - 42px))`;
-
-  const focusedIndex = selectedIndex ?? (bars.length > 0 ? bars.length - 1 : 0);
-
-  const selectAndFocus = (next: number) => {
-    if (bars.length === 0) return;
-    const target = Math.max(0, Math.min(bars.length - 1, next));
-    setSelectedIndex(target);
-    barRefs.current[target]?.focus();
-  };
-
-  const handleBarKeyDown = (event: React.KeyboardEvent, index: number) => {
-    if (event.key === "ArrowLeft") {
-      event.preventDefault();
-      selectAndFocus(index - 1);
-    } else if (event.key === "ArrowRight") {
-      event.preventDefault();
-      selectAndFocus(index + 1);
-    } else if (event.key === "Home") {
-      event.preventDefault();
-      selectAndFocus(0);
-    } else if (event.key === "End") {
-      event.preventDefault();
-      selectAndFocus(bars.length - 1);
-    }
-  };
-
-  return (
-    <div
-      ref={containerRef}
-      className="compact-node-health-bars"
-      data-kind={kind}
-      style={{ "--compact-health-tooltip-x": activeLeft } as CSSProperties}
-      role="group"
-      aria-label={`${kind === "latency" ? "延迟" : "丢包"}历史`}
-      onMouseLeave={() => setHoveredIndex(null)}
-      onBlur={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-          setHoveredIndex(null);
-          setSelectedIndex(null);
-        }
-      }}
-    >
-      {activeTooltip && (
-        <span className="compact-node-health-tooltip" aria-hidden="true">
-          {activeTooltip}
-        </span>
-      )}
-      {bars.map((bucket, index) => {
-        const hasSamples = bucket.total > 0;
-        const latencyValue = bucket.value ?? 0;
-        const lossValue = bucket.loss ?? 0;
-        const active = kind === "latency" ? bucket.value != null : hasSamples;
-        const height =
-          kind === "latency"
-            ? `${active ? Math.max(26, Math.min(100, (latencyValue / safeMax) * 100)) : 24}%`
-            : `${active ? Math.max(38, Math.min(100, 84 - Math.min(lossValue, 45))) : 24}%`;
-        const color = active
-          ? kind === "latency"
-            ? latencyHeatColor(latencyValue)
-            : lossHeatColor(lossValue)
-          : "var(--progress-bg)";
-        const style = {
-          "--compact-health-height": height,
-          "--compact-health-color": color,
-          opacity: active ? 0.94 : 0.42,
-        } as CSSProperties;
-        const tooltip = formatHealthBucketTooltip(bucket, kind);
-
-        return (
-          <button
-            key={`${bucket.index}-${index}`}
-            ref={(el) => {
-              barRefs.current[index] = el;
-            }}
-            type="button"
-            className="compact-node-health-bar"
-            style={style}
-            data-selected={selectedIndex === index ? "true" : "false"}
-            tabIndex={index === focusedIndex ? 0 : -1}
-            aria-label={tooltip}
-            title={tooltip}
-            onMouseEnter={() => setHoveredIndex(index)}
-            onClick={() => setSelectedIndex(index)}
-            onKeyDown={(e) => handleBarKeyDown(e, index)}
-          />
-        );
-      })}
-    </div>
-  );
-}
-
-function CompactHealthItem({
-  icon,
-  label,
-  value,
-  unit,
-  color,
-  title,
-  children,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: string;
-  unit?: string;
-  color: string;
-  title?: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="compact-node-health-item">
-      <div className="compact-node-health-head">
-        <span className="compact-node-health-label">
-          {icon}
-          {label}
-        </span>
-        <strong className="compact-node-health-value tabular" style={{ color }} title={title}>
-          {value}
-          {unit && <small>{unit}</small>}
-        </strong>
-      </div>
-      {children}
-    </div>
   );
 }
 
@@ -648,77 +493,17 @@ function CompactTrafficBar({
   );
 }
 
-// memo:每个 prop 都源自 ping,在父卡片每 ~1s 指标 tick 重渲染时引用稳定(ping 数据
-// ~60s 才刷新一次),所以在 ping 数据真正变化前,跳过重渲染 latency/loss HealthBars
-// 这棵子树 —— 它是每 tick DOM 开销的大头。
 const CompactNodeHealth = memo(function CompactNodeHealth({
-  ping,
-  pingBuckets,
-  pingSeries,
-  activePingIndex,
-  onSelectPing,
-  latencyColor,
-  lossColor,
-  hasHomepagePingBinding,
-  history,
-  redrawKey,
+  pingSeries, hasHomepagePingBinding, history, redrawKey,
 }: {
-  ping: PingOverviewItem;
-  pingBuckets: PingOverviewBucket[];
   pingSeries: NodePingSeries[];
-  activePingIndex: number;
-  onSelectPing: (index: number) => void;
-  latencyColor: string;
-  lossColor: string;
   hasHomepagePingBinding: boolean;
   history: NodeHistory;
   redrawKey: string;
 }) {
-  // 已绑定但无样本时显示"无样本",未绑定时显示"未配置" —— 见 pingEmptyLabels。
-  const { text: emptyText } = pingEmptyLabels(hasHomepagePingBinding);
-  const hourStatsTitle = formatPingHourStatsTitle(ping);
   return (
-    // 整组吸底：margin-top:auto 只写在这一层，内部元素一条 auto 都不需要。
-    // 之前是「标签行和健康区各自 auto、再用相邻选择器把后者清零」的三条规则链，
-    // 每加一个底部元素就多一种组合；包一层之后加多少个都不用再动吸底逻辑。
     <div className="compact-node-tail">
-      {hasHomepagePingBinding && (
-        <>
-          {pingSeries.length > 1 && (
-            <div className="compact-node-ping-tabs">
-              <PingTaskTabs
-                series={pingSeries}
-                activeIndex={activePingIndex}
-                onSelect={onSelectPing}
-                size="small"
-              />
-            </div>
-          )}
-          <div className="compact-node-bottom">
-            <CompactHealthItem
-              icon={<Clock3 size={12} />}
-              label="延迟"
-              value={ping.lastValue != null ? Math.round(ping.lastValue).toString() : emptyText}
-              unit={ping.lastValue != null ? "ms" : undefined}
-              color={latencyColor}
-              title={hourStatsTitle ?? undefined}
-            >
-              <HealthBars buckets={pingBuckets} max={ping.max} kind="latency" />
-            </CompactHealthItem>
-            <CompactHealthItem
-              icon={<Unplug size={12} />}
-              label="丢包"
-              value={ping.loss != null ? ping.loss.toFixed(1) : emptyText}
-              unit={ping.loss != null ? "%" : undefined}
-              color={lossColor}
-            >
-              <HealthBars buckets={pingBuckets} max={1} kind="loss" />
-            </CompactHealthItem>
-          </div>
-        </>
-      )}
-      {/* 小卡不放标题行，只画条：上报率与说明都在 tooltip 里，省下约 18px。
-          无数据时组件自己返回 null，这里不必再判一次。 */}
+      {hasHomepagePingBinding && <PingTaskRows series={pingSeries} size="small" redrawKey={redrawKey} />}
       <NodeHistoryStrip history={history} redrawKey={redrawKey} height={14} />
     </div>
   );
@@ -732,8 +517,6 @@ export const CompactNodeCard = memo(function CompactNodeCard({
   const model = useNodeCardModel(uuid, HEALTH_BAR_COUNT);
   const themeSettings = useThemeSettings();
   const redrawKey = useCanvasRedrawKey();
-  // 多任务时选中的任务序号。任务数变化(改绑定)后可能越界,取用处再夹一次。
-  const [activePingIndex, setActivePingIndex] = useState(0);
   // 骨架分支之前调用(hook 数量恒定):数据未就位时传 null,不会播闪烁。
   const statusFlash = useNodeStatusFlash(
     model.node ? model.node.online : null,
@@ -806,8 +589,6 @@ export const CompactNodeCard = memo(function CompactNodeCard({
     attention,
     history,
   } = model;
-  const pingIndex = Math.min(activePingIndex, pingSeries.length - 1);
-  const { ping, buckets: pingBuckets, latencyColor, lossColor } = pingSeries[pingIndex];
   const showTrafficTotal = themeSettings.isReady && themeSettings.compactShowTrafficTotal;
   const showBilling = themeSettings.isReady && themeSettings.compactShowBilling;
   const showUptime = themeSettings.isReady && themeSettings.compactShowUptime;
@@ -852,13 +633,7 @@ export const CompactNodeCard = memo(function CompactNodeCard({
       <CompactTrafficBar traffic={traffic} uptimeLabel={uptimeLabel} />
       {(hasHomepagePingBinding || history.slots.length > 0) && (
         <CompactNodeHealth
-          ping={ping}
-          pingBuckets={pingBuckets}
           pingSeries={pingSeries}
-          activePingIndex={pingIndex}
-          onSelectPing={setActivePingIndex}
-          latencyColor={latencyColor}
-          lossColor={lossColor}
           hasHomepagePingBinding={hasHomepagePingBinding}
           history={history}
           redrawKey={redrawKey}

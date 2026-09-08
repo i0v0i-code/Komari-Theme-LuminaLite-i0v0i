@@ -1,3 +1,5 @@
+@import "./ping-task-rows.css";
+
 .native-roll-value {
   display: inline-flex;
   align-items: baseline;

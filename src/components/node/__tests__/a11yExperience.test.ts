@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const compactCardSource = readFileSync(
-  new URL("../CompactNodeCard.tsx", import.meta.url),
+const pingHistorySource = readFileSync(
+  new URL("../PingHistoryBars.tsx", import.meta.url),
   "utf8",
 );
 const compactCss = readFileSync(
@@ -23,12 +23,12 @@ const sortControlSource = readFileSync(
 );
 
 describe("a11y and mobile experience contracts", () => {
-  it("CompactNodeCard health bars use semantic buttons with roving tabindex instead of aria-hidden spans", () => {
-    expect(compactCardSource).not.toContain('className="compact-node-health-bar"\n            style={style}\n            data-selected={selectedIndex === index ? "true" : "false"}\n            aria-hidden="true"');
-    expect(compactCardSource).toContain('type="button"');
-    expect(compactCardSource).toContain('className="compact-node-health-bar"');
-    expect(compactCardSource).toContain("tabIndex={index === focusedIndex ? 0 : -1}");
-    expect(compactCardSource).toContain('aria-label={tooltip}');
+  it("Shared ping history bars use semantic buttons with roving tabindex instead of aria-hidden spans", () => {
+    expect(pingHistorySource).not.toContain('className="compact-node-health-bar"\n            style={style}\n            data-selected={selectedIndex === index ? "true" : "false"}\n            aria-hidden="true"');
+    expect(pingHistorySource).toContain('type="button"');
+    expect(pingHistorySource).toContain('className="compact-node-health-bar"');
+    expect(pingHistorySource).toContain("tabIndex={index === focusedIndex ? 0 : -1}");
+    expect(pingHistorySource).toContain('aria-label={tooltip}');
     expect(compactCss).toContain("appearance: none;");
     expect(compactCss).toContain(".compact-node-health-bar:focus-visible");
   });

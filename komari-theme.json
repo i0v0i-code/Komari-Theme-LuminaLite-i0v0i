@@ -1,16 +1,16 @@
 {
-  "name": "Komari-Theme-LuminaLite",
-  "short": "LuminaLite",
-  "description": "Komari-Theme-LuminaLite",
-  "version": "2.7.4",
-  "author": "JohnsonRan",
-  "url": "https://github.com/JohnsonRan/Komari-Theme-LuminaLite",
+  "name": "Komari-Theme-LuminaLite-i0v0i",
+  "short": "LuminaLite-i0v0i",
+  "description": "LuminaLite i0v0i 定制版：每个延迟监测任务独占一行，名称与延迟、丢包及趋势对应展示。",
+  "version": "2.7.4-i0v0i.1",
+  "author": "i0v0i-code; based on JohnsonRan/LuminaLite",
+  "url": "https://github.com/i0v0i-code/Komari-Theme-LuminaLite-i0v0i",
   "preview": "preview.png",
   "configuration": {
     "type": "managed",
     "name": {
-      "zh-CN": "LuminaLite 主题设置",
-      "en": "LuminaLite Theme Settings"
+      "zh-CN": "LuminaLite-i0v0i 主题设置",
+      "en": "LuminaLite-i0v0i Theme Settings"
     },
     "data": [
       {
@@ -19,8 +19,8 @@
       },
       {
         "name": {
-          "zh-CN": "<strong>LuminaLite</strong> 的设置会立即公开给主题使用。节点与 Ping 任务选择器需要 Komari 1.4.3 或更高版本。",
-          "en": "<strong>LuminaLite</strong> settings are exposed to the theme immediately. Node and Ping task selectors require Komari 1.4.3 or newer."
+          "zh-CN": "<strong>LuminaLite-i0v0i</strong> 的设置会立即公开给主题使用。节点与 Ping 任务选择器需要 Komari 1.4.3 或更高版本。",
+          "en": "<strong>LuminaLite-i0v0i</strong> settings are exposed to the theme immediately. Node and Ping task selectors require Komari 1.4.3 or newer."
         },
         "type": "textbox"
       },

@@ -1,3 +1,4 @@
+import { currencyRate, loadExchangeRates, readExchangeRates, FX_TTL } from "@/services/exchangeRates";
 import {
   lazy,
   Suspense,
@@ -58,6 +59,8 @@ import { useVersion } from "@/hooks/useVersion";
 import { HomeSortControl } from "./HomeSortControl";
 import { NodeCardSkeleton } from "./NodeCardSkeleton";
 import type { NodeViewMode } from "@/utils/themeSettings";
+import { formatRenewalPrice } from "@/utils/billing";
+import type { NodeInfo } from "@/types/komari";
 
 const NodeCard = lazy(() =>
   import("./NodeCard").then((module) => ({ default: module.NodeCard })),
@@ -212,6 +215,33 @@ function OverviewTopTooltip({ metric, rows }: { metric: OverviewTopMetricKey; ro
 function formatCompactCount(value: number): string {
   if (value >= 10_000) return `${(value / 1000).toFixed(1)}k`;
   return value.toLocaleString();
+}
+
+function periodDays(period: "month" | "year") { return period === "month" ? 30 : 365; }
+function cycleDays(value: string | number | null | undefined) {
+  const n = Number(value); if (n > 0) return n;
+  const s = String(value ?? "").toLowerCase();
+  if (s.includes("year") || s.includes("年")) return 365;
+  if (s.includes("quarter") || s.includes("季")) return 90;
+  if (s.includes("half") || s.includes("半年")) return 180;
+  return 30;
+}
+function formatRmb(value: number) { return value.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function calculateHomeCosts(meta: NodeInfo[], rates: Record<string, number>) {
+  let remaining = 0; let average = 0; let missing = 0; const now = Date.now();
+  const rows: { node: NodeInfo; monthly: number; remaining: number }[] = [];
+  for (const node of meta) {
+    if (!(node.price > 0)) continue;
+    const rate = currencyRate(node.currency, rates);
+    if (rate == null) { missing++; continue; }
+    const days = cycleDays(node.billing_cycle); const monthly = node.price * 30 / days * rate;
+    average += monthly;
+    const expiry = Date.parse(node.expired_at || "");
+    const value = Number.isFinite(expiry) && expiry > now ? monthly * ((expiry - now) / 86400000) / 30 : 0;
+    remaining += value;
+    rows.push({ node, monthly, remaining: value });
+  }
+  return { remaining, average, missing, rows: rows.sort((a, b) => b.monthly - a.monthly) };
 }
 
 type HomeResourceMetricKey = "cpu" | "memory" | "disk" | "load";
@@ -384,11 +414,13 @@ function HomeOverviewLive({
   onWarmTraffic,
   nameByUuid,
   visibleUuidSet,
+  meta,
 }: {
   dense: boolean;
   onWarmTraffic: () => void;
   nameByUuid: Map<string, string>;
   visibleUuidSet: Set<string>;
+  meta: NodeInfo[];
 }) {
   const nodes = useHomeNodeSummaries(true);
   const visibleNodes = useMemo(
@@ -436,6 +468,7 @@ function HomeOverviewLive({
       onWarmTraffic={onWarmTraffic}
       nodes={visibleNodes}
       nameByUuid={nameByUuid}
+      meta={meta}
     />
   );
 }
@@ -446,13 +479,35 @@ function HomeOverviewCards({
   onWarmTraffic,
   nodes,
   nameByUuid,
+  meta,
 }: {
   overview: HomeOverview;
   dense: boolean;
   onWarmTraffic: () => void;
   nodes: HomeNodeSummary[];
   nameByUuid: Map<string, string>;
+  meta: NodeInfo[];
 }) {
+  const [costPeriod, setCostPeriod] = useState<"month" | "year">("month");
+  const [fx, setFx] = useState(readExchangeRates);
+  const [fxError, setFxError] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const refresh = async () => {
+      try {
+        const data = await loadExchangeRates();
+        if (!cancelled) {
+          setFx(data); setFxError(false);
+          timer = setTimeout(refresh, Math.max(1000, data.updatedAt + FX_TTL - Date.now()));
+        }
+      } catch {
+        if (!cancelled) { setFxError(true); timer = setTimeout(refresh, 300000); }
+      }
+    };
+    void refresh();
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, []);
   const [trafficValue, trafficUnit] = formatBytes(
     overview.trafficUp + overview.trafficDown,
   ).split(" ");
@@ -469,6 +524,7 @@ function HomeOverviewCards({
   const connectionsDetailLabel = `TCP ${overview.connectionsTcp.toLocaleString()} · UDP ${overview.connectionsUdp.toLocaleString()}`;
   const connectionsCompactLabel = `TCP ${formatCompactCount(overview.connectionsTcp)} UDP ${formatCompactCount(overview.connectionsUdp)}`;
   const resources = useMemo(() => aggregateHomeResources(nodes), [nodes]);
+  const costs = useMemo(() => calculateHomeCosts(meta, fx?.rates ?? { CNY: 1 }), [meta, fx]);
 
   // TOP 3 只在悬停那张卡片时才算：nodes 每个 WS tick 都会换引用，
   // 无条件计算三份榜单等于每 2s 白跑三趟全表。
@@ -481,6 +537,39 @@ function HomeOverviewCards({
   return (
     <>
       <section className={`home-overview${dense ? " is-dense" : ""}`} aria-label="首页总览">
+      <article className="overview-card overview-cost-card" data-metric="cost" tabIndex={0} aria-label="费用概览，悬停或聚焦查看节点明细">
+        <div className="overview-card-head">
+          <span className="overview-card-label">费用概览</span>
+          <div className="overview-cost-switch" role="group" aria-label="费用周期">
+            {(["month", "year"] as const).map((period) => (
+              <button key={period} type="button" aria-pressed={costPeriod === period} onClick={() => setCostPeriod(period)}>
+                {period === "month" ? "月" : "年"}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="overview-cost-values">
+          <div><span>剩余价值</span><strong>{costs.missing ? "—" : `¥${formatRmb(costs.remaining)}`}</strong></div>
+          <div><span>平均支出</span><strong>{costs.missing ? "—" : `¥${formatRmb(costs.average * (periodDays(costPeriod) / 30))}`}/{costPeriod === "month" ? "月" : "年"}</strong></div>
+        </div>
+        <div className="overview-card-tooltip overview-cost-tooltip" role="region" aria-label="费用明细">
+          <div className="overview-card-tooltip-title">节点费用明细 · 人民币估算</div>
+          <table>
+            <thead><tr><th>节点 / 原价</th><th>{costPeriod === "month" ? "月均支出" : "年均支出"}</th><th>剩余价值</th></tr></thead>
+            <tbody>{costs.rows.map(({ node, monthly, remaining }) => (
+              <tr key={node.uuid}>
+                <td><span>{node.name}</span><small>{formatRenewalPrice(node)}</small></td>
+                <td>¥{formatRmb(monthly * periodDays(costPeriod) / 30)}</td>
+                <td>¥{formatRmb(remaining)}</td>
+              </tr>
+            ))}</tbody>
+          </table>
+          {costs.rows.length === 0 && <p>当前筛选内暂无付费节点。</p>}
+          <p className="overview-cost-note">按账单周期折算；剩余价值按未到期天数估算。月按 30 天、年按 365 天。</p>
+          <p className="overview-cost-note">{fx ? `Frankfurter · 汇率日期 ${fx.date} · 获取于 ${new Date(fx.updatedAt).toLocaleString("zh-CN")} · 缓存 24 小时${fxError ? " · 更新失败，沿用上次汇率" : ""}` : fxError ? "汇率暂不可用" : "汇率加载中…"}</p>
+          {costs.missing > 0 && <p className="overview-cost-note">{costs.missing} 台节点缺少可用汇率，暂不显示总额；以下明细仅包含可换算节点。</p>}
+        </div>
+      </article>
       <article className="overview-card" data-metric="online">
         <span className="overview-card-label">在线节点</span>
         <div className="overview-card-main">
@@ -962,11 +1051,12 @@ export function NodeGrid() {
         </div>
       )}
       {showHomeOverview && (
-        <HomeOverviewLive
+          <HomeOverviewLive
           dense={mode === "mini" || mode === "list"}
           onWarmTraffic={warmTrafficPage}
           nameByUuid={nameByUuid}
-          visibleUuidSet={visibleUuidSet}
+            visibleUuidSet={visibleUuidSet}
+            meta={allMeta.filter((node) => visibleUuidSet.has(node.uuid))}
         />
       )}
     </>
@@ -990,9 +1080,9 @@ export function NodeGrid() {
     // 卡片从 context 读各自的判定结果，避免每张卡再算一遍（见 useNodeAttention）。
     <AttentionProvider value={attentionByUuid}>
       {homeHeader}
-      {(showGroupTabs || showHomeSort) && (
+      {(showGroupTabs || showHomeSort || showRegionBar) && (
         // 分组标签落首列、排序钉在末列右侧；窄屏时两者保持在同一控件栏内。
-        <div className={controlsWrapClassName} style={controlsStyle}>
+        <div className={`${controlsWrapClassName} home-filters-bar`} style={controlsStyle}>
           {showGroupTabs && (
             <GroupTabs
               groups={groupOptions}
@@ -1001,14 +1091,14 @@ export function NodeGrid() {
             />
           )}
           {showHomeSort && <HomeSortControl state={sort} />}
+          {showRegionBar && (
+            <RegionTabs
+              regions={regionOptions}
+              selectedRegion={selectedRegion}
+              onSelectRegion={setSelectedRegion}
+            />
+          )}
         </div>
-      )}
-      {showRegionBar && (
-        <RegionTabs
-          regions={regionOptions}
-          selectedRegion={selectedRegion}
-          onSelectRegion={setSelectedRegion}
-        />
       )}
       {isList ? (
         <Suspense fallback={<NodeCardSkeleton />}>

@@ -112,10 +112,21 @@
   --overview-online: color-mix(in srgb, var(--status-success) 72%, transparent);
   --overview-offline: color-mix(in srgb, var(--status-error) 55%, transparent);
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 10px;
 }
+
+.overview-cost-card {
+  min-width: 0;
+  order: 5;
+}
+.overview-cost-switch { display: flex; gap: 2px; border: 1px solid var(--hairline); border-radius: 7px; padding: 2px; }
+.overview-cost-switch button { border: 0; border-radius: 5px; background: transparent; color: var(--text-tertiary); font: inherit; font-size: 11px; padding: 2px 6px; cursor: pointer; }
+.overview-cost-switch button[aria-pressed="true"] { background: var(--surface-c); color: var(--text-primary); }
+.overview-cost-values { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.overview-cost-values span { display: block; color: var(--text-tertiary); font-size: 11px; }
+.overview-cost-values strong { display: block; margin-top: 4px; color: var(--text-primary); font-size: 17px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 .home-resource-strip {
   --resource-accent: var(--text-tertiary);
@@ -296,6 +307,9 @@
 .overview-card[data-metric="traffic"] { --metric-accent: var(--traffic-up); }
 .overview-card[data-metric="bandwidth"] { --metric-accent: var(--speed-high); }
 .overview-card[data-metric="connections"] { --metric-accent: var(--accent-500); }
+.overview-card[data-metric="cost"] {
+  --metric-accent: #d4a72c;
+}
 
 /* 暗色依靠表面色阶建立层级，不叠白色顶光或指标色氛围。背景图模式仍由 --surface-a
    保留用户配置的透明度。 */
@@ -948,6 +962,7 @@
   padding: 5px;
 }
 
+
 .home-group-tabs button {
   display: inline-flex;
   /* 有空间时均分宽度、从不收缩(溢出时滚动而非挤压)。max-width 上限防止单个长组名
@@ -1537,3 +1552,81 @@
   min-width: 22px;
   height: 22px;
 }
+
+/* Desktop filters share one surface; the inset rule separates their roles. */
+@media (min-width: 1101px) {
+  .home-controls-bar.home-filters-bar {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    min-height: 54px;
+    padding: 5px 12px;
+    border: 1px solid var(--hairline);
+    border-radius: 16px;
+    background: var(--surface-a);
+  }
+
+  .home-filters-bar .home-group-tabs {
+    flex: 0 1 40%;
+    padding: 0 12px 0 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .home-filters-bar .home-region-bar {
+    flex: 1 1 0;
+    min-width: 0;
+    margin: 0;
+    padding: 0 0 0 16px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .home-filters-bar .home-group-tabs ~ .home-region-bar {
+    border-left: 1px solid var(--border);
+  }
+
+  .home-filters-bar .home-region-chips {
+    min-height: 32px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+
+  .home-filters-bar .home-sort {
+    order: 1;
+    flex: none;
+    margin-left: 12px;
+  }
+}
+
+.overview-cost-tooltip {
+  display: none;
+  left: auto;
+  right: 0;
+  transform: none;
+  animation: none;
+  width: 440px;
+  min-width: 0;
+  max-width: calc(100vw - 32px);
+  max-height: min(480px, 65vh);
+  overflow-y: auto;
+  pointer-events: auto;
+  padding: 14px;
+}
+.overview-cost-card:hover .overview-cost-tooltip,
+.overview-cost-card:focus-within .overview-cost-tooltip { display: block; }
+.overview-cost-card:focus-visible { outline: 2px solid var(--metric-accent); outline-offset: 3px; }
+.overview-cost-card::after { content: ""; position: absolute; top: 100%; left: 0; right: 0; height: 12px; }
+.overview-cost-tooltip::before { display: none; }
+.overview-cost-tooltip table { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; }
+.overview-cost-tooltip th { color: var(--text-tertiary); font-weight: 500; }
+.overview-cost-tooltip th, .overview-cost-tooltip td { padding: 8px 4px; text-align: right; border-bottom: 1px solid var(--hairline); }
+.overview-cost-tooltip th:first-child, .overview-cost-tooltip td:first-child { text-align: left; }
+.overview-cost-tooltip td:first-child { overflow-wrap: anywhere; }
+.overview-cost-tooltip td:not(:first-child) { white-space: nowrap; }
+.overview-cost-tooltip small { display: block; margin-top: 3px; color: var(--text-tertiary); }
+.overview-cost-note { margin: 10px 0 0; color: var(--text-secondary); font-size: 11px; line-height: 1.6; }

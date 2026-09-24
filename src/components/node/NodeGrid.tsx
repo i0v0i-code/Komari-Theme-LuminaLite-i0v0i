@@ -50,6 +50,7 @@ import { getDisplayRegionCode } from "@/utils/geo";
 import { useHomeSort } from "@/hooks/useHomeSort";
 import { useHomeNodeOrder } from "@/hooks/useHomeNodeOrder";
 import { useLayoutTransition } from "@/hooks/useLayoutTransition";
+import { useMasonryGrid } from "@/hooks/useMasonryGrid";
 import { AttentionProvider, useNodeAttention } from "@/hooks/useNodeAttention";
 import { useHourlyClock } from "@/hooks/useClock";
 import { preloadTodayTrafficStats } from "@/hooks/useTodayTrafficStats";
@@ -930,6 +931,8 @@ export function NodeGrid() {
   // FLIP 重排:排序/筛选/卡片视图切换时,留下来的卡片滑到新位置;
   // 分组集合完全替换、没有共同卡片可做 FLIP 时,contentRevision 负责整体淡入反馈。
   const gridRef = useRef<HTMLDivElement>(null);
+  useMasonryGrid(gridRef, orderedUuids, mode,
+    themeSettings.isReady && storeHydrated && visibleStructures.length > 0 && !isList);
   useLayoutTransition(gridRef, orderedUuids, mode, contentRevision);
 
   if (!themeSettings.isReady || !storeHydrated) {
@@ -1012,7 +1015,7 @@ export function NodeGrid() {
           <NodeListView uuids={orderedUuids} contentRevision={contentRevision} />
         </Suspense>
       ) : (
-        <div ref={gridRef} className={gridWrapClassName} style={gridStyle}>
+        <div ref={gridRef} className={`${gridWrapClassName} node-grid-natural`} style={gridStyle}>
           {cards}
         </div>
       )}

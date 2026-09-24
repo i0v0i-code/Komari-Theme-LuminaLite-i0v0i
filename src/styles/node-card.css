@@ -16,6 +16,32 @@
   box-shadow: none;
   overflow: hidden;
 }
+/* 桌面卡片按内容收缩，检测任务较少时不再在页脚前补齐同排高度。 */
+@media (min-width: 768px) {
+  .node-grid-natural {
+    align-items: start;
+    grid-auto-rows: 1px;
+    row-gap: 0;
+  }
+
+  .node-grid-natural > [data-flip-id] {
+    padding-bottom: var(--masonry-gap, 16px);
+  }
+
+  .node-grid-natural .server-card,
+  .node-grid-natural .compact-node-card,
+  .node-grid-natural .mini-node-card,
+  .node-grid-natural .server-card-content {
+    height: auto;
+  }
+
+  .node-grid-natural .server-card,
+  .node-grid-natural .compact-node-card,
+  .node-grid-natural .mini-node-card {
+    content-visibility: visible;
+  }
+}
+
 .server-card {
   contain-intrinsic-size: auto 438px;
   transition:
